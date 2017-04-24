@@ -3,16 +3,16 @@ abstract Phylo = {
   flags startcat = Message ;
 
   cat
-    Message ; InputObj ; OutputObj ; Service ; DSMessage ; Portal ;
+    Message ; InputObj ; OutputObj ; Service ; DSMessage ; TreeFormat ;
 
   fun
-    Extract : OutputObj -> InputObj-> Service -> Message ;
-    Resolve : OutputObj -> Service -> Message ;
-    Submit : Portal -> InputObj-> Service -> Message ;
-    TheyResolve: Service -> Message ;
-    AndConj : Message -> Message -> DSMessage ;
-    ListO, Tree, SNamesO, TheseSNamesO, ScientificNamesO : OutputObj ;
-    SNamesI, ListI, TextI : InputObj ;
-    ThePortal : Portal ;
+    ExtractNames : OutputObj -> InputObj -> Service -> Message ;
+    ResolveNames : OutputObj -> InputObj -> Service -> Message ;
+    ExtractTree: InputObj -> TreeFormat -> Service -> Message;
+    
+    names, text, taxa : InputObj ;
+    scientificNames, resolvedNames : OutputObj ;
+    newick : TreeFormat;
+    
     OpenTree, GNRD, OT_TNRS : Service ;
 }
