@@ -28,19 +28,19 @@ def query(s, p, o):
         select = select + "?s "
         where = where + "?s "
     else:
-        where = where + s
+        where = where + " " + s
         
     if p is None:
         select = select + "?p "
         where = where + " ?p "
     else:
-        where = where + p
+        where = where + " " +p
           
     if o is None:
         select = select + "?o "
         where = where + " ?o "
     else:
-        where = where + o
+        where = where + " " +o
     
     query =("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
             "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
