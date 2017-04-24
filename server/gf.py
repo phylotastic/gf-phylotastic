@@ -1,4 +1,3 @@
-# purpose of 2 ontologies
 # last_index in workflow composition
 # categorize services for each step in ontology?
 
@@ -16,7 +15,8 @@ eng = gr.languages["PhyloEng"]
 app = Flask(__name__)
 
 QUERY_ONT = "http://phylo.cs.nmsu.edu:5000/q?"
-PREFIX_ONT = "http://phylotastic.org/owl/phylotastic_web_service.owl#"
+PREFIX_METHOD = "http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#"
+PREFIX_CDAO = "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#"
 
 @app.route('/')
 def upload_file():
@@ -35,14 +35,18 @@ def process_file():
         # document planning
         for step in j["workflow_plan"][0]["plan"]:
             message = {}
+            # "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
+            # "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
+            # "PREFIX method: <http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#>"
+            # "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
             if step["operation_name"] == "phylotastic_FindScientificNamesFromFreeText_GNRD_GET":
                 # in ontology: FindScientificNamesFromText. Ontology -> ASP -> "findScientificNamesFromText_GNRD_GET".
                 # How to know the predicate is "containComponents". Inference???? Agree on a convention? But convention in this case can not apply on other cases, other ontologies
                 message["func"] = "ExtractNames"
 
-                triple = q([step["operation_name"], "has_input", None])
-                embed()
+                triple = q(["cdao:" + step["operation_name"], "method:has_input", None])
                 input = select_o(triple)
+                embed()
                 triple = q([input, "has_Component", None])
                 message["inp"] = select_o(triple)
                 
@@ -133,7 +137,7 @@ def select_o(triple):
     return list(map(lambda x: rm_pre(x["o"]["value"]), triple["results"]["bindings"]))
 
 def rm_pre(s):
-    return s.replace(PREFIX_ONT, "")
+    return s.replace(PREFIX_METHOD, "").replace(PREFIX_CDAO, "")
             
 if __name__ == '__main__':
    app.run(debug = True)
