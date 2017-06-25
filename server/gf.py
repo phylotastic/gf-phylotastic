@@ -8,9 +8,13 @@ import json
 import pgf
 import random
 import urllib2
+import urllib
+import onto_adapter
 
 gr = pgf.readPGF("Phylo.pgf")
 eng = gr.languages["PhyloEng"]
+
+grammar = onto_adapter.read_file("../Phylo.gf")
 
 app = Flask(__name__)
 
@@ -31,67 +35,40 @@ def process_file():
         j = json.loads(content)
         paragraph = []
         linearized_paragraph = ""
-        
+
         # document planning
         for step in j["workflow_plan"][0]["plan"]:
             message = {}
+            message["abstract_tree"] = {}
             # "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
             # "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
             # "PREFIX method: <http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#>"
             # "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
-            if step["operation_name"] == "phylotastic_FindScientificNamesFromFreeText_GNRD_GET":
-                # in ontology: FindScientificNamesFromText. Ontology -> ASP -> "findScientificNamesFromText_GNRD_GET".
-                # How to know the predicate is "containComponents". Inference???? Agree on a convention? But convention in this case can not apply on other cases, other ontologies
-                message["func"] = "ExtractNames"
-
-                triple = q(["cdao:" + step["operation_name"], "method:has_input", None])
-                input = select_o(triple)
-                embed()
-                triple = q([input, "has_Component", None])
-                message["inp"] = select_o(triple)
                 
-                triple = q([step["operation_name"], "has_output", None])
-                output = select_o(triple)
-                triple = q([output, "has_Component", None])
-                message["out"] = select_o(triple)
-
-                # dont know
-                message["ser"] = step["operation_name"]
-                
-                message["abstract_tree"] = " ".join([message["func"], message["out"][0], message["inp"][0], message["ser"]])
-            elif step["operation_name"] == "resolvedScientificNames_OT_TNRS_GET":
-                # in ontology: ResolveScientificNamesWithOpenTreeTNRS_GET
-                message["func"] = "ResolveNames"
-                
-                triple = q(["ResolveScientificNamesWithOpenTreeTNRS_GET_Output", "containComponents", None])
-                message["out"] = select_o(triple)
-
-                triple = q(["ResolveScientificNamesWithOpenTreeTNRS_GET_Input", "containComponents", None])
-                message["inp"] = select_o(triple)
-                
-                message["ser"] = "OT_TNRS"
-                
-                message["abstract_tree"] = " ".join([message["func"], message["out"][1], message["inp"][0], message["ser"]])
-                            
-            elif step["operation_name"] == "getPhylogeneticTree_OT_GET":
-                # in ontology: GetPhylogeneticTreesFromOpenTree_GET
-                message["func"] = "ExtractTree"
-                
-                triple = q(["GetPhylogeneticTreesFromOpenTree_GET_Output", "containComponents", None])
-                message["tree_format"] = select_o(triple)
-                
-                triple = q(["GetPhylogeneticTreesFromOpenTree_GET_Input", "containComponents", None])
-                message["inp"] = select_o(triple)
-                
-                message["ser"] = "OpenTree"
-                message["abstract_tree"] = " ".join([message["func"], message["inp"][0], message["tree_format"][0], message["ser"]])
-                
-            paragraph.append(message)
-                    
+            # There's no "validate" method because almost anything is a valid URL. http://stackoverflow.com/questions/827557/how-do-you-validate-a-url-with-a-regular-expression-in-python
+            
+            # extract GF function names from rdfs:comment of the node, then get the parameters list of the function.
+            queried_funcs = q(["<" + step["operation_ontology_uri"] + ">", "rdfs:comment", None])
+            func_names = select_obj(queried_funcs)
+            for name in func_names:
+                prototype = onto_adapter.get_function(grammar, rm_pre(name))
+                params = prototype.split(" ")
+                mapping = {}
+                for p in params:
+                    if p != name:
+                        # explore function: get more detail of a parameter. It will enable some changes in sentence like:
+                        # 1. ServiceX has input A, output B
+                        # 2. ServiceX has input subclass_of_A, output subclass_of_B
+                        mapping[p] = explore(PREFIX_CDAO + p, 0)
+                message["abstract_tree"][name] = abtree_construction( params, mapping )
+                        
+                paragraph.append(message)
+        
         for m in paragraph:
-            lm = pgf.readExpr(m["abstract_tree"])
-            linearized_paragraph += eng.linearize(lm).capitalize()
-            linearized_paragraph += ". "
+            for onto_uri, tree in m["abstract_tree"].iteritems():
+                lm = pgf.readExpr(tree)
+                linearized_paragraph += eng.linearize(lm).capitalize()
+                linearized_paragraph += ". "
         
         paragraph.append(linearized_paragraph)
                 
@@ -119,22 +96,59 @@ def process_file():
 #             paragraph += eng.linearize(e2)
 
     return json.dumps(paragraph)
+
+# specify how deep you want to go down from a node. If you want to go way too deep than actual reachable path, return when you reach the deepest node.
+def explore(node, level, visited=None):
+    bucket = []
+    
+    if visited is None:
+        visited = []
+    
+    if node in visited:
+        return []
+
+    if level == 0:
+        return [node]
+    
+    if level > 0:
+        # go down
+        triple = q(["<" + node + ">", None, None])
+        for t in triple["results"]["bindings"]:
+            # check if this property (edge) should be followed by seeing that "rdfs:comment" is denoted by "nlg_follow"
+            comment_in_property = q(["<" + t["p"]['value'] + ">", "rdfs:comment", None])
+            if comment_in_property["results"]["bindings"] != [] and "nlg_follow" in comment_in_property["results"]["bindings"][0]["o"]["value"]:
+                bucket.extend( explore(t["o"]['value'], level - 1, visited.append(node)) )
+    # else:
+        # TODO: go up
+        
+    return bucket
+
+def abtree_construction(params, mapping):
+    replacement = list()
+    for idx, p in enumerate(params):
+        # for now, just select random. TODO: selection on purpose
+        if idx == 0:
+            replacement.append( p )
+        else:
+            replacement.append( "p" + rm_pre(random.choice(mapping[p])) )
+    embed()
+    return " ".join(replacement)
     
 def q(arr):
-    query = QUERY_ONT
+    params = {}
     for idx, val in enumerate(arr):
         if val is not None:
             if idx == 0:
-                query = query + "s=" + val + "&"
+                params["s"] = val
             elif idx == 1:
-                query = query + "p=" + val + "&"
+                params["p"] = val
             elif idx == 2:
-                query = query + "o=" + val + "&"
-            
+                params["o"] = val
+    query = QUERY_ONT + urllib.urlencode(params)
     return json.loads(urllib2.urlopen(query).read())
 
-def select_o(triple):
-    return list(map(lambda x: rm_pre(x["o"]["value"]), triple["results"]["bindings"]))
+def select_obj(triple):
+    return list(map(lambda x: x["o"]["value"], triple["results"]["bindings"]))
 
 def rm_pre(s):
     return s.replace(PREFIX_METHOD, "").replace(PREFIX_CDAO, "")
