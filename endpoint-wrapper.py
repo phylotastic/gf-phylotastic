@@ -14,14 +14,28 @@ app = Flask(__name__)
 # p: predicate
 # o: object
 # if you want to query s=ClassX for example, then the where part of your query will look like "where my:ClassX". my is prefix.
-@app.route('/q', methods=['GET'])
-def search():
+@app.route('/bq', methods=['GET'])
+def basic_query():
     s = request.args.get('s')
     p = request.args.get('p')
     o = request.args.get('o')
-    return jsonify(query(s, p, o))
+    return jsonify(bquery(s, p, o))
 
-def query(s, p, o):
+# restriction query
+@app.route('/rq', methods=['GET'])
+def restriction_query():
+    klass = request.args.get('klass')
+    query = ("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
+             "PREFIX owl: <http://www.w3.org/2002/07/owl#>"
+             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
+             "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>"
+             "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
+             "SELECT ?restriction ?restrictionPredicate ?restrictionValue"
+             "WHERE { cdao:" + klass + " rdfs:subClassOf ?restriction."
+                     "?restriction ?restrictionPredicate ?restrictionValue }")
+    return call(query)
+    
+def bquery(s, p, o):
     select = " SELECT "
     where = " "
     if s is None:

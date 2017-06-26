@@ -18,7 +18,10 @@ grammar = onto_adapter.read_file("../Phylo.gf")
 
 app = Flask(__name__)
 
-QUERY_ONT = "http://phylo.cs.nmsu.edu:5000/q?"
+# basic query
+BQUERY_ONT = "http://phylo.cs.nmsu.edu:5000/bq?"
+# restriction query
+RQUERY_ONT = "http://phylo.cs.nmsu.edu:5000/rq?"
 PREFIX_METHOD = "http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#"
 PREFIX_CDAO = "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#"
 
@@ -35,7 +38,7 @@ def process_file():
         j = json.loads(content)
         paragraph = []
         linearized_paragraph = ""
-
+        
         # document planning
         for step in j["workflow_plan"][0]["plan"]:
             message = {}
@@ -45,17 +48,17 @@ def process_file():
             # "PREFIX method: <http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#>"
             # "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
                 
-            # There's no "validate" method because almost anything is a valid URL. http://stackoverflow.com/questions/827557/how-do-you-validate-a-url-with-a-regular-expression-in-python
+            # There's no "validate" method because almost anything is a valid URL. http://stackoverflow.com/questions/827557/how-do-you-validate-a-url-TNth-a-regular-expression-in-python
             
             # extract GF function names from rdfs:comment of the node, then get the parameters list of the function.
-            queried_funcs = q(["<" + step["operation_ontology_uri"] + ">", "rdfs:comment", None])
+            queried_funcs = bq(["<" + step["operation_ontology_uri"] + ">", "rdfs:comment", None])
             func_names = select_obj(queried_funcs)
             for name in func_names:
-                prototype = onto_adapter.get_function(grammar, rm_pre(name))
+                prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)))
                 params = prototype.split(" ")
                 mapping = {}
                 for p in params:
-                    if p != name:
+                    if p != rm_nlg_pre(rm_pre(name)):
                         # explore function: get more detail of a parameter. It will enable some changes in sentence like:
                         # 1. ServiceX has input A, output B
                         # 2. ServiceX has input subclass_of_A, output subclass_of_B
@@ -97,6 +100,19 @@ def process_file():
 
     return json.dumps(paragraph)
 
+# text generation for generalizing a class
+# klass is class
+# rank is how generalized you want. The bigger the more generalized.
+@app.route('/generalize')
+def generalize():
+    klass = request.args.get('class')
+    rank = request.args.get('rank')
+    
+    triple = bq(["<" + PREFIX_CDAO + klass + ">", None, None])
+    embed()
+    return render_template('upload.html')
+    
+    
 # specify how deep you want to go down from a node. If you want to go way too deep than actual reachable path, return when you reach the deepest node.
 def explore(node, level, visited=None):
     bucket = []
@@ -110,12 +126,17 @@ def explore(node, level, visited=None):
     if level == 0:
         return [node]
     
+    # nlg_stop annotates the deepest node you can reach.
+    cm_in_node = bq(["<" + node + ">", "rdfs:comment", None])
+    if cm_in_node["results"]["bindings"] != [] and "nlg_stop" in cm_in_node["results"]["bindings"][0]["o"]["value"]:
+        return [node]
+        
     if level > 0:
         # go down
-        triple = q(["<" + node + ">", None, None])
+        triple = bq(["<" + node + ">", None, None])
         for t in triple["results"]["bindings"]:
             # check if this property (edge) should be followed by seeing that "rdfs:comment" is denoted by "nlg_follow"
-            comment_in_property = q(["<" + t["p"]['value'] + ">", "rdfs:comment", None])
+            comment_in_property = bq(["<" + t["p"]['value'] + ">", "rdfs:comment", None])
             if comment_in_property["results"]["bindings"] != [] and "nlg_follow" in comment_in_property["results"]["bindings"][0]["o"]["value"]:
                 bucket.extend( explore(t["o"]['value'], level - 1, visited.append(node)) )
     # else:
@@ -126,15 +147,20 @@ def explore(node, level, visited=None):
 def abtree_construction(params, mapping):
     replacement = list()
     for idx, p in enumerate(params):
-        # for now, just select random. TODO: selection on purpose
         if idx == 0:
             replacement.append( p )
         else:
+            # for now, just select random because most of cases, there will 
+            # be only one nlg_stop node so it is one-to-one mapping. 
+            # TODO: selection on purpose or select all
             replacement.append( "p" + rm_pre(random.choice(mapping[p])) )
-    embed()
     return " ".join(replacement)
     
-def q(arr):
+def rq(klass):
+    query = RQUERY_ONT + "klass=" + klass
+    return json.loads(urllib2.urlopen(query).read())
+    
+def bq(arr):
     params = {}
     for idx, val in enumerate(arr):
         if val is not None:
@@ -144,7 +170,7 @@ def q(arr):
                 params["p"] = val
             elif idx == 2:
                 params["o"] = val
-    query = QUERY_ONT + urllib.urlencode(params)
+    query = BQUERY_ONT + urllib.urlencode(params)
     return json.loads(urllib2.urlopen(query).read())
 
 def select_obj(triple):
@@ -152,6 +178,9 @@ def select_obj(triple):
 
 def rm_pre(s):
     return s.replace(PREFIX_METHOD, "").replace(PREFIX_CDAO, "")
-            
+
+def rm_nlg_pre(s):
+    return s.replace("nlg_", "")
+    
 if __name__ == '__main__':
    app.run(debug = True)
