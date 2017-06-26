@@ -26,14 +26,14 @@ def basic_query():
 def restriction_query():
     klass = request.args.get('klass')
     query = ("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
-             "PREFIX owl: <http://www.w3.org/2002/07/owl#>"
-             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
-             "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>"
-             "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
-             "SELECT ?restriction ?restrictionPredicate ?restrictionValue"
-             "WHERE { cdao:" + klass + " rdfs:subClassOf ?restriction."
+             " PREFIX owl: <http://www.w3.org/2002/07/owl#>"
+             " PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
+             " PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>"
+             " PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
+             " SELECT ?restriction ?restrictionPredicate ?restrictionValue"
+             " WHERE { cdao:" + klass + " rdfs:subClassOf ?restriction. "
                      "?restriction ?restrictionPredicate ?restrictionValue }")
-    return call(query)
+    return jsonify(call(query))
     
 def bquery(s, p, o):
     select = " SELECT "
@@ -73,4 +73,5 @@ def call(q):
     
         
 if __name__ == '__main__':
-   app.run(debug = True, host='128.123.63.10')
+       # app.run(debug = True, host='128.123.63.10')
+   app.run(debug = True)

@@ -108,7 +108,7 @@ def generalize():
     klass = request.args.get('class')
     rank = request.args.get('rank')
     
-    triple = bq(["<" + PREFIX_CDAO + klass + ">", None, None])
+    triple = rq(klass)
     embed()
     return render_template('upload.html')
     
@@ -158,6 +158,7 @@ def abtree_construction(params, mapping):
     
 def rq(klass):
     query = RQUERY_ONT + "klass=" + klass
+    embed()
     return json.loads(urllib2.urlopen(query).read())
     
 def bq(arr):
