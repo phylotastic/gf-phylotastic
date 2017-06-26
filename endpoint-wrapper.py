@@ -73,5 +73,5 @@ def call(q):
     
         
 if __name__ == '__main__':
-       # app.run(debug = True, host='128.123.63.10')
-   app.run(debug = True)
+   app.run(debug = True, host='128.123.63.10')
+   # app.run(debug = True)
