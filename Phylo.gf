@@ -1,10 +1,11 @@
 abstract Phylo = {
 
-    flags startcat = Message ;
-
+    flags startcat = DMessage;
+    flags startcat = Message;
+    
     cat
         Message;
-        
+
         phylotastic_FindScientificNamesFromFreeText_GNRD_GET;
         phylotastic_FindScientificNames_FromText_GNRD_GET_In;
         phylotastic_FindScientificNames_FromText_GNRD_GET_Out;
@@ -37,7 +38,30 @@ abstract Phylo = {
         phylotastic_ResolvedScientificNames_OT_TNRS_GET_In;
         phylotastic_ResolvedScientificNames_OT_TNRS_GET_Out;
         
+        -- Class level
+        DMessage;
+        
+        resource_SetOfSciName;
+        resource_WebURL;
+        resource_Document;
+        resource_FreeText;
+        resource_SetOfTaxon;
     fun
+        -- Class level
+        NamesExtractionWeb: resource_SetOfSciName -> resource_WebURL -> DMessage;
+        NamesExtractionDocument: resource_SetOfSciName -> resource_Document -> DMessage;
+        NamesExtractionText: resource_SetOfSciName -> resource_FreeText -> DMessage;
+        NamesExtraction: resource_SetOfSciName -> Message;
+        NamesOperation: Message;
+        NamesResolutions: resource_SetOfTaxon -> resource_SetOfSciName -> DMessage;
+        
+        presource_SetOfSciName : resource_SetOfSciName;
+        presource_WebURL       : resource_WebURL;
+        presource_Document     : resource_Document;
+        presource_FreeText     : resource_FreeText;
+        presource_SetOfTaxon   : resource_SetOfTaxon;
+    
+        -- Instance level
         ExtractNamesFromText: phylotastic_FindScientificNames_FromText_GNRD_GET_Out -> phylotastic_FindScientificNames_FromText_GNRD_GET_In -> phylotastic_FindScientificNamesFromFreeText_GNRD_GET -> Message;
         ExtractNamesFromWeb: phylotastic_FindScientificNames_Web_GNRD_GET_Out -> phylotastic_FindScientificNames_Web_GNRD_GET_IN -> phylotastic_FindScientificNamesFromWeb_GNRD_GET -> Message;
         ExtractNamesFromTaxonAndCountry: phylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_Out -> phylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_In -> phylotastic_GetAllSpeciesFromTaxon_Country_OT_GET -> Message;

@@ -25,6 +25,10 @@ RQUERY_ONT = "http://phylo.cs.nmsu.edu:5000/rq?"
 PREFIX_METHOD = "http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#"
 PREFIX_CDAO = "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#"
 
+
+NLG_STOP = "nlg_stop"
+NLG_FOLLOW = "nlg_follow"
+
 @app.route('/')
 def upload_file():
     return render_template('upload.html')
@@ -59,10 +63,10 @@ def process_file():
                 mapping = {}
                 for p in params:
                     if p != rm_nlg_pre(rm_pre(name)):
-                        # explore function: get more detail of a parameter. It will enable some changes in sentence like:
+                        # go_down function: get more detail of a parameter. It will enable some changes in sentence like:
                         # 1. ServiceX has input A, output B
                         # 2. ServiceX has input subclass_of_A, output subclass_of_B
-                        mapping[p] = explore(PREFIX_CDAO + p, 0)
+                        mapping[p] = go_down(PREFIX_CDAO + p, 0)
                 message["abstract_tree"][name] = abtree_construction( params, mapping )
                         
                 paragraph.append(message)
@@ -105,16 +109,43 @@ def process_file():
 # rank is how generalized you want. The bigger the more generalized.
 @app.route('/generalize')
 def generalize():
+    message = {}
+    message["abstract_tree"] = {}
+    
     klass = request.args.get('class')
     rank = request.args.get('rank')
     
+    queried_funcs = bq(["<" + PREFIX_CDAO + klass + ">", "rdfs:comment", None])
+    func_names = select_obj(queried_funcs)
+    for name in func_names:
+        prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)))
+        params = prototype.split(" ")
+        mapping = {}
+        for p in params:
+            if p != rm_nlg_pre(rm_pre(name)):
+                mapping[p] = ["p" + p]
+        message["abstract_tree"] = abtree_construction( params, mapping )
+    embed()    
+    lm = pgf.readExpr(message["abstract_tree"])
+    linearized_message = eng.linearize(lm).capitalize()
+    linearized_message += "."
+    return linearized_message
+    
+# given a class, check for its superclass information: cdao:operation_class_has_output and cdao:operation_class_has_input
+def go_up(klass, level):
+    superklass = bq(["<" + PREFIX_CDAO + klass + ">", "rdfs:subClassOf", None])
+    bucket = []
+    
     triple = rq(klass)
-    embed()
-    return render_template('upload.html')
+    restrictions = restriction_filter(triple)
+    # if not restrictions:
+        # there is no restriction (information) on this node, maybe it is too abstract.
     
-    
+    for restriction_name in restrictions.keys():
+        restrictions[restriction_name]
+        
 # specify how deep you want to go down from a node. If you want to go way too deep than actual reachable path, return when you reach the deepest node.
-def explore(node, level, visited=None):
+def go_down(node, level, visited=None):
     bucket = []
     
     if visited is None:
@@ -128,7 +159,7 @@ def explore(node, level, visited=None):
     
     # nlg_stop annotates the deepest node you can reach.
     cm_in_node = bq(["<" + node + ">", "rdfs:comment", None])
-    if cm_in_node["results"]["bindings"] != [] and "nlg_stop" in cm_in_node["results"]["bindings"][0]["o"]["value"]:
+    if cm_in_node["results"]["bindings"] != [] and NLG_STOP in cm_in_node["results"]["bindings"][0]["o"]["value"]:
         return [node]
         
     if level > 0:
@@ -137,11 +168,9 @@ def explore(node, level, visited=None):
         for t in triple["results"]["bindings"]:
             # check if this property (edge) should be followed by seeing that "rdfs:comment" is denoted by "nlg_follow"
             comment_in_property = bq(["<" + t["p"]['value'] + ">", "rdfs:comment", None])
-            if comment_in_property["results"]["bindings"] != [] and "nlg_follow" in comment_in_property["results"]["bindings"][0]["o"]["value"]:
-                bucket.extend( explore(t["o"]['value'], level - 1, visited.append(node)) )
-    # else:
-        # TODO: go up
-        
+            if comment_in_property["results"]["bindings"] != [] and NLG_FOLLOW in comment_in_property["results"]["bindings"][0]["o"]["value"]:
+                bucket.extend( go_down(t["o"]['value'], level - 1, visited.append(node)) )
+    
     return bucket
 
 def abtree_construction(params, mapping):
@@ -158,7 +187,6 @@ def abtree_construction(params, mapping):
     
 def rq(klass):
     query = RQUERY_ONT + "klass=" + klass
-    embed()
     return json.loads(urllib2.urlopen(query).read())
     
 def bq(arr):
@@ -182,6 +210,16 @@ def rm_pre(s):
 
 def rm_nlg_pre(s):
     return s.replace("nlg_", "")
-    
+
+def restriction_filter(triple):
+    restrictions = dict()
+    for t in triple["results"]["bindings"]:
+        if t["restriction"]["type"] == "bnode":
+            if t["restriction"]["value"] not in restrictions.keys():
+                restrictions[t["restriction"]["value"]] = dict()
+            else:
+                restrictions[t["restriction"]["value"]][t["restrictionPredicate"]["value"]] = t["restrictionValue"]["value"]
+    return restrictions
+                
 if __name__ == '__main__':
    app.run(debug = True)

@@ -11,4 +11,4 @@ def get_function(lines, func_name):
     func = list(filter(lambda x: x.find(func_name) == 0, lines))
     if not func:
         return ""
-    return func[0].replace(" -> Message;", "").replace(":", "").replace(" -> ", " ")
+    return func[0].replace(" -> DMessage;", "").replace(" -> Message;", "").replace(":", "").replace(" -> ", " ")

@@ -28,8 +28,30 @@ concrete PhyloEng of Phylo = open SyntaxEng, ParadigmsEng, ConstructorsEng in {
         phylotastic_ResolvedScientificNames_OT_TNRS_GET_In       = NP;
         phylotastic_ResolvedScientificNames_OT_TNRS_GET_Out      = NP;
         
+        -- Class level
+        DMessage = S;
+        resource_SetOfSciName = CN;
+        resource_WebURL       = CN;
+        resource_Document     = CN;
+        resource_FreeText     = CN;
+        resource_SetOfTaxon   = CN;
         
     lin
+        -- Class level
+        NamesExtractionWeb presource_SetOfSciName presource_WebURL = mkS and_Conj (mkS (mkCl name_extraction_web_in presource_WebURL)) (mkS (mkCl name_extraction_web_out presource_SetOfSciName));
+        NamesExtractionDocument presource_SetOfSciName presource_Document = mkS and_Conj (mkS (mkCl name_extraction_document_in presource_Document)) (mkS (mkCl name_extraction_document_out presource_SetOfSciName));
+        NamesExtractionText presource_SetOfSciName presource_FreeText = mkS and_Conj (mkS (mkCl name_extraction_text_in presource_FreeText)) (mkS (mkCl name_extraction_text_out presource_SetOfSciName));
+        NamesExtraction presource_SetOfSciName = mkCl name_extraction_out presource_SetOfSciName;
+        NamesOperation = mkCl name_operation (mkVP (mkVP operate_V) (ConstructorsEng.mkAdv on_Prep (mkNP (mkCN (mkN "species names")))));
+        NamesResolutions presource_SetOfTaxon presource_SetOfSciName = mkS and_Conj (mkS (mkCl name_resolution_in presource_SetOfSciName)) (mkS (mkCl name_resolution_out presource_SetOfTaxon));
+        
+        presource_SetOfSciName = mkCN (mkN "set of scientific names");
+        presource_WebURL       = mkCN (mkN "a web URL");
+        presource_Document     = mkCN (mkN "a document");
+        presource_FreeText     = mkCN (mkN "a piece of text");
+        presource_SetOfTaxon   = mkCN (mkN "set of taxonomies");
+        
+        -- Instance level
         ExtractNamesFromText pphylotastic_FindScientificNames_FromText_GNRD_GET_Out pphylotastic_FindScientificNames_FromText_GNRD_GET_In pphylotastic_FindScientificNamesFromFreeText_GNRD_GET = mkCl pphylotastic_FindScientificNames_FromText_GNRD_GET_Out (passiveVP extract_V2 (mkNP pphylotastic_FindScientificNamesFromFreeText_GNRD_GET (ConstructorsEng.mkAdv from_Prep pphylotastic_FindScientificNames_FromText_GNRD_GET_In)));
         ExtractNamesFromWeb pphylotastic_FindScientificNames_Web_GNRD_GET_Out pphylotastic_FindScientificNames_Web_GNRD_GET_IN pphylotastic_FindScientificNamesFromWeb_GNRD_GET = mkCl pphylotastic_FindScientificNames_Web_GNRD_GET_Out (passiveVP extract_V2 (mkNP pphylotastic_FindScientificNamesFromWeb_GNRD_GET (ConstructorsEng.mkAdv from_Prep pphylotastic_FindScientificNames_Web_GNRD_GET_IN)));
         ExtractNamesFromTaxonAndCountry pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_Out pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_In pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET = mkCl pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_Out (passiveVP extract_V2 (mkNP pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET (ConstructorsEng.mkAdv from_Prep pphylotastic_GetAllSpeciesFromTaxon_Country_OT_GET_In)));
@@ -69,7 +91,21 @@ concrete PhyloEng of Phylo = open SyntaxEng, ParadigmsEng, ConstructorsEng in {
     oper
         extract_V2 = variants {mkV2 "extract"; mkV2 "take"; mkV2 "collect"};
         return_V2 = mkV2 "return";
-                
+        operate_V = mkV "operate";
+        
+        -- Class level
+        name_extraction_web_in       = mkNP (mkCN (mkN "input of NameExtractionWeb class"));
+        name_extraction_web_out      = mkNP (mkCN (mkN "output"));
+        name_extraction_document_in  = mkNP (mkCN (mkN "input of NameExtractionDocument class"));
+        name_extraction_document_out = mkNP (mkCN (mkN "output"));
+        name_extraction_text_in      = mkNP (mkCN (mkN "input of NameExtractionText class"));
+        name_extraction_text_out     = mkNP (mkCN (mkN "output"));
+        name_extraction_out          = mkNP (mkCN (mkN "output of NameExtraction class"));
+        name_operation               = mkNP (mkCN (mkN "set of web services"));
+        name_resolution_in           = mkNP (mkCN (mkN "input of NameResolution class"));
+        name_resolution_out          = mkNP (mkCN (mkN "output"));
+        
+        -- Instance level
         phylotastic_FindScientificNamesFromFreeText_GNRD_GET_CN     = mkCN (mkN "phylotastic_FindScientificNamesFromFreeText_GNRD_GET");
         phylotastic_FindScientificNames_FromText_GNRD_GET_In_CN     = mkCN (mkN "phylotastic_FindScientificNamesFromFreeText_GNRD_GET_In");
         phylotastic_FindScientificNames_FromText_GNRD_GET_Out_CN    = mkCN (mkN "phylotastic_FindScientificNamesFromFreeText_GNRD_GET_Out");
