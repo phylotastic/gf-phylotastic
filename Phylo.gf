@@ -46,6 +46,13 @@ abstract Phylo = {
         resource_Document;
         resource_FreeText;
         resource_SetOfTaxon;
+        resource_taxon;
+        resource_CountryName;
+        resource_speciesTree;
+        resource_SetOfResolvedName;
+        resource_Tree;
+        resource_Image;
+        
     fun
         -- Class level
         NamesExtractionWeb: resource_SetOfSciName -> resource_WebURL -> DMessage;
@@ -55,12 +62,37 @@ abstract Phylo = {
         NamesOperation: Message;
         NamesResolutions: resource_SetOfTaxon -> resource_SetOfSciName -> DMessage;
         
+        TaxonToSpeciesByCountry: resource_SetOfSciName -> resource_CountryName -> resource_taxon -> DMessage;
+        -- TODO TaxonToSpeciesByGenome: 
+        TaxonToSpeciesOperation: resource_SetOfSciName -> resource_taxon -> DMessage;
+        TaxonOperation: Message; 
+        
+        TaxonomyBasedExtraction: resource_speciesTree -> resource_SetOfTaxon -> DMessage;
+        PhylogenyBasedExtraction: resource_speciesTree -> resource_SetOfResolvedName -> DMessage;
+        TreeExtractionOperation: resource_Tree -> Message;
+        
+        TreeTransformation: resource_Tree -> DMessage;
+        TreeScalingOperation: resource_Tree -> DMessage;
+        
+        TreeVisualizationOperation: resource_Image -> resource_Tree -> DMessage;
+        
+        TreeOperation: Message;
+        
         presource_SetOfSciName : resource_SetOfSciName;
         presource_WebURL       : resource_WebURL;
         presource_Document     : resource_Document;
         presource_FreeText     : resource_FreeText;
         presource_SetOfTaxon   : resource_SetOfTaxon;
-    
+        
+        presource_taxon        : resource_taxon;
+        presource_CountryName  : resource_CountryName;
+        
+        presource_speciesTree  : resource_speciesTree;
+        presource_SetOfResolvedName: resource_SetOfResolvedName;
+        presource_Tree         : resource_Tree;
+        
+        presource_Image        : resource_Image;
+        
         -- Instance level
         ExtractNamesFromText: phylotastic_FindScientificNames_FromText_GNRD_GET_Out -> phylotastic_FindScientificNames_FromText_GNRD_GET_In -> phylotastic_FindScientificNamesFromFreeText_GNRD_GET -> Message;
         ExtractNamesFromWeb: phylotastic_FindScientificNames_Web_GNRD_GET_Out -> phylotastic_FindScientificNames_Web_GNRD_GET_IN -> phylotastic_FindScientificNamesFromWeb_GNRD_GET -> Message;

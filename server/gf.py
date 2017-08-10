@@ -58,7 +58,7 @@ def process_file():
             queried_funcs = bq(["<" + step["operation_ontology_uri"] + ">", "rdfs:comment", None])
             func_names = select_obj(queried_funcs)
             for name in func_names:
-                prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)))
+                prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)) + ":")
                 params = prototype.split(" ")
                 mapping = {}
                 for p in params:
@@ -106,34 +106,65 @@ def process_file():
 
 # text generation for generalizing a class
 # klass is class
-# rank is how generalized you want. The bigger the more generalized.
+# level is how generalized you want. The bigger the more generalized.
 @app.route('/generalize')
 def generalize():
     message = {}
     message["abstract_tree"] = {}
     
     klass = request.args.get('class')
-    rank = request.args.get('rank')
+    level = int(request.args.get('level'))
     
-    queried_funcs = bq(["<" + PREFIX_CDAO + klass + ">", "rdfs:comment", None])
-    func_names = select_obj(queried_funcs)
+    if level < 0:
+        return "level must be >= 0"
+    
+    a = go_up(klass)
+    embed()
+    # not work for multiple inheritance
+    queries_funcs = abtree_of_super(PREFIX_CDAO + klass, level)
+    func_names = select_obj(queries_funcs)
     for name in func_names:
-        prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)))
+        prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)) + ":")
         params = prototype.split(" ")
+        
+        try:
+            params.remove("")
+        except ValueError:
+            pass
+        
         mapping = {}
         for p in params:
             if p != rm_nlg_pre(rm_pre(name)):
-                mapping[p] = ["p" + p]
+                mapping[p] = [p]
         message["abstract_tree"] = abtree_construction( params, mapping )
-    embed()    
+
+    if not message["abstract_tree"]:
+        return "not found any GF function"
+
     lm = pgf.readExpr(message["abstract_tree"])
     linearized_message = eng.linearize(lm).capitalize()
     linearized_message += "."
     return linearized_message
+
+def abtree_of_super(klass, level):
+    queries_funcs = bq(["<" + klass + ">", "rdfs:comment", None])
     
-# given a class, check for its superclass information: cdao:operation_class_has_output and cdao:operation_class_has_input
-def go_up(klass, level):
-    superklass = bq(["<" + PREFIX_CDAO + klass + ">", "rdfs:subClassOf", None])
+    if level == 0:
+        return queries_funcs
+        
+    superklass_triple = bq(["<" + klass + ">", "rdfs:subClassOf", None])
+    superklass = ""
+    for t in superklass_triple["results"]["bindings"]:
+        if t["o"]["type"] == "uri":
+            superklass = t["o"]["value"]
+    
+    if not superklass:
+        return queries_funcs
+        
+    return abtree_of_super(superklass, level-1)
+        
+# TODO given a class, check for its superclass information: cdao:operation_class_has_output and cdao:operation_class_has_input
+def go_up(klass):
     bucket = []
     
     triple = rq(klass)
@@ -142,7 +173,15 @@ def go_up(klass, level):
         # there is no restriction (information) on this node, maybe it is too abstract.
     
     for restriction_name in restrictions.keys():
-        restrictions[restriction_name]
+        for k in restrictions[restriction_name].keys():
+            if (restrictions[restriction_name][k] == "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#operation_class_has_input" or 
+               restrictions[restriction_name][k] == "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#operation_class_has_output"):
+                bucket.append(restrictions[restriction_name])
+                break
+    
+    # bucket.extend(go_up())
+    
+    return bucket
         
 # specify how deep you want to go down from a node. If you want to go way too deep than actual reachable path, return when you reach the deepest node.
 def go_down(node, level, visited=None):
@@ -217,8 +256,7 @@ def restriction_filter(triple):
         if t["restriction"]["type"] == "bnode":
             if t["restriction"]["value"] not in restrictions.keys():
                 restrictions[t["restriction"]["value"]] = dict()
-            else:
-                restrictions[t["restriction"]["value"]][t["restrictionPredicate"]["value"]] = t["restrictionValue"]["value"]
+            restrictions[t["restriction"]["value"]][t["restrictionPredicate"]["value"]] = t["restrictionValue"]["value"]
     return restrictions
                 
 if __name__ == '__main__':
