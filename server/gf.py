@@ -11,23 +11,13 @@ import urllib2
 import urllib
 import onto_adapter
 
-gr = pgf.readPGF("Phylo.pgf")
+gr = pgf.readPGF("../grammar_generator/Phylo.pgf")
 eng = gr.languages["PhyloEng"]
 
-grammar = onto_adapter.read_file("../Phylo.gf")
+grammar = onto_adapter.read_file("../grammar_generator/Phylo.gf")
+in_out_file = "../grammar_generator/in_out.txt"
 
 app = Flask(__name__)
-
-# basic query
-BQUERY_ONT = "http://phylo.cs.nmsu.edu:5000/bq?"
-# restriction query
-RQUERY_ONT = "http://phylo.cs.nmsu.edu:5000/rq?"
-PREFIX_METHOD = "http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#"
-PREFIX_CDAO = "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#"
-
-
-NLG_STOP = "nlg_stop"
-NLG_FOLLOW = "nlg_follow"
 
 @app.route('/')
 def upload_file():
@@ -39,225 +29,40 @@ def process_file():
         f = request.files['file']
         # f.save(secure_filename(f.filename))
         content = f.read()
-        j = json.loads(content)
+        j = json.loads( content )
         paragraph = []
         linearized_paragraph = ""
         
-        # document planning
-        for step in j["workflow_plan"][0]["plan"]:
+        with open( in_out_file ) as lfile:    
+            in_out = json.load( lfile )
+        
+        for service in j["workflow_plan"][0]["plan"]:
             message = {}
             message["abstract_tree"] = {}
-            # "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
-            # "PREFIX cdao: <http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#>"
-            # "PREFIX method: <http://www.cs.nmsu.edu/~epontell/Ontologies/phylogenetic_methods.owl#>"
-            # "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
-                
-            # There's no "validate" method because almost anything is a valid URL. http://stackoverflow.com/questions/827557/how-do-you-validate-a-url-TNth-a-regular-expression-in-python
             
-            # extract GF function names from rdfs:comment of the node, then get the parameters list of the function.
-            queried_funcs = bq(["<" + step["operation_ontology_uri"] + ">", "rdfs:comment", None])
-            func_names = select_obj(queried_funcs)
-            for name in func_names:
-                prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)) + ":")
-                params = prototype.split(" ")
-                mapping = {}
-                for p in params:
-                    if p != rm_nlg_pre(rm_pre(name)):
-                        # go_down function: get more detail of a parameter. It will enable some changes in sentence like:
-                        # 1. ServiceX has input A, output B
-                        # 2. ServiceX has input subclass_of_A, output subclass_of_B
-                        mapping[p] = go_down(PREFIX_CDAO + p, 0)
-                message["abstract_tree"][name] = abtree_construction( params, mapping )
+            # query input, output of service
+            ser_in_out = in_out[ service["operation_name"] ]
+            
+            message["abstract_tree"] = abtree_construction( service["operation_name"], ser_in_out )
                         
-                paragraph.append(message)
+            paragraph.append(message)
         
         for m in paragraph:
-            for onto_uri, tree in m["abstract_tree"].iteritems():
-                lm = pgf.readExpr(tree)
-                linearized_paragraph += eng.linearize(lm).capitalize()
-                linearized_paragraph += ". "
+            lm = pgf.readExpr( m["abstract_tree"] )
+            linearized_paragraph += eng.linearize(lm).capitalize()
+            linearized_paragraph += ". "
         
-        paragraph.append(linearized_paragraph)
-                
-        # micro planning
-        # if message_1["out"] == message_2["out"]:
-#             # AndConj (Extract ScientificNamesO TextI GNRD) (TheyResolve OT_TNRS)
-#             # AndConj function accepts 2 parameters:
-#             #   - Extract function accepts 3 parameters which are:
-#             #       +
-#             #       +
-#             #       +
-#             #   - TheyResolve function accepts 1 parameter which is:
-#             #       +
-#
-#             e = pgf.readExpr("AndConj (" + message_1["func"] + " " + message_1["out"] +
-#                             " " + message_1["inp"] + " " + message_1["ser"] + ") (They" +
-#                             message_2["func"] + " " + message_2["ser"] + ")")
-#             paragraph += eng.linearize(e)
-#         else:
-#             e1 = pgf.readExpr(message_1["func"] + " " + message_1["out"] +
-#                                 " " + message_1["inp"] + " " + message_1["ser"])
-#             paragraph += eng.linearize(e1)
-#             paragraph += ". "
-#             e2 = pgf.readExpr(message_2["func"] + " These" + message_2["out"] + " " + message_2["ser"])
-#             paragraph += eng.linearize(e2)
+        paragraph.append( linearized_paragraph )
 
     return json.dumps(paragraph)
 
-# text generation for generalizing a class
-# klass is class
-# level is how generalized you want. The bigger the more generalized.
-@app.route('/generalize')
-def generalize():
-    message = {}
-    message["abstract_tree"] = {}
+def abtree_construction(func, in_out):
+    abtree = func + " "
+    for i in in_out["input"]:
+        abtree = abtree + "p_" + i + " "
+    for o in in_out["output"]:
+        abtree = abtree + "p_" + o + " "
+    return abtree
     
-    klass = request.args.get('class')
-    level = int(request.args.get('level'))
-    
-    if level < 0:
-        return "level must be >= 0"
-    
-    a = go_up(klass)
-    embed()
-    # not work for multiple inheritance
-    queries_funcs = abtree_of_super(PREFIX_CDAO + klass, level)
-    func_names = select_obj(queries_funcs)
-    for name in func_names:
-        prototype = onto_adapter.get_function(grammar, rm_nlg_pre(rm_pre(name)) + ":")
-        params = prototype.split(" ")
-        
-        try:
-            params.remove("")
-        except ValueError:
-            pass
-        
-        mapping = {}
-        for p in params:
-            if p != rm_nlg_pre(rm_pre(name)):
-                mapping[p] = [p]
-        message["abstract_tree"] = abtree_construction( params, mapping )
-
-    if not message["abstract_tree"]:
-        return "not found any GF function"
-
-    lm = pgf.readExpr(message["abstract_tree"])
-    linearized_message = eng.linearize(lm).capitalize()
-    linearized_message += "."
-    return linearized_message
-
-def abtree_of_super(klass, level):
-    queries_funcs = bq(["<" + klass + ">", "rdfs:comment", None])
-    
-    if level == 0:
-        return queries_funcs
-        
-    superklass_triple = bq(["<" + klass + ">", "rdfs:subClassOf", None])
-    superklass = ""
-    for t in superklass_triple["results"]["bindings"]:
-        if t["o"]["type"] == "uri":
-            superklass = t["o"]["value"]
-    
-    if not superklass:
-        return queries_funcs
-        
-    return abtree_of_super(superklass, level-1)
-        
-# TODO given a class, check for its superclass information: cdao:operation_class_has_output and cdao:operation_class_has_input
-def go_up(klass):
-    bucket = []
-    
-    triple = rq(klass)
-    restrictions = restriction_filter(triple)
-    # if not restrictions:
-        # there is no restriction (information) on this node, maybe it is too abstract.
-    
-    for restriction_name in restrictions.keys():
-        for k in restrictions[restriction_name].keys():
-            if (restrictions[restriction_name][k] == "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#operation_class_has_input" or 
-               restrictions[restriction_name][k] == "http://www.cs.nmsu.edu/~epontell/CDAO/cdao.owl#operation_class_has_output"):
-                bucket.append(restrictions[restriction_name])
-                break
-    
-    # bucket.extend(go_up())
-    
-    return bucket
-        
-# specify how deep you want to go down from a node. If you want to go way too deep than actual reachable path, return when you reach the deepest node.
-def go_down(node, level, visited=None):
-    bucket = []
-    
-    if visited is None:
-        visited = []
-    
-    if node in visited:
-        return []
-
-    if level == 0:
-        return [node]
-    
-    # nlg_stop annotates the deepest node you can reach.
-    cm_in_node = bq(["<" + node + ">", "rdfs:comment", None])
-    if cm_in_node["results"]["bindings"] != [] and NLG_STOP in cm_in_node["results"]["bindings"][0]["o"]["value"]:
-        return [node]
-        
-    if level > 0:
-        # go down
-        triple = bq(["<" + node + ">", None, None])
-        for t in triple["results"]["bindings"]:
-            # check if this property (edge) should be followed by seeing that "rdfs:comment" is denoted by "nlg_follow"
-            comment_in_property = bq(["<" + t["p"]['value'] + ">", "rdfs:comment", None])
-            if comment_in_property["results"]["bindings"] != [] and NLG_FOLLOW in comment_in_property["results"]["bindings"][0]["o"]["value"]:
-                bucket.extend( go_down(t["o"]['value'], level - 1, visited.append(node)) )
-    
-    return bucket
-
-def abtree_construction(params, mapping):
-    replacement = list()
-    for idx, p in enumerate(params):
-        if idx == 0:
-            replacement.append( p )
-        else:
-            # for now, just select random because most of cases, there will 
-            # be only one nlg_stop node so it is one-to-one mapping. 
-            # TODO: selection on purpose or select all
-            replacement.append( "p" + rm_pre(random.choice(mapping[p])) )
-    return " ".join(replacement)
-    
-def rq(klass):
-    query = RQUERY_ONT + "klass=" + klass
-    return json.loads(urllib2.urlopen(query).read())
-    
-def bq(arr):
-    params = {}
-    for idx, val in enumerate(arr):
-        if val is not None:
-            if idx == 0:
-                params["s"] = val
-            elif idx == 1:
-                params["p"] = val
-            elif idx == 2:
-                params["o"] = val
-    query = BQUERY_ONT + urllib.urlencode(params)
-    return json.loads(urllib2.urlopen(query).read())
-
-def select_obj(triple):
-    return list(map(lambda x: x["o"]["value"], triple["results"]["bindings"]))
-
-def rm_pre(s):
-    return s.replace(PREFIX_METHOD, "").replace(PREFIX_CDAO, "")
-
-def rm_nlg_pre(s):
-    return s.replace("nlg_", "")
-
-def restriction_filter(triple):
-    restrictions = dict()
-    for t in triple["results"]["bindings"]:
-        if t["restriction"]["type"] == "bnode":
-            if t["restriction"]["value"] not in restrictions.keys():
-                restrictions[t["restriction"]["value"]] = dict()
-            restrictions[t["restriction"]["value"]][t["restrictionPredicate"]["value"]] = t["restrictionValue"]["value"]
-    return restrictions
-                
 if __name__ == '__main__':
    app.run(debug = True)
