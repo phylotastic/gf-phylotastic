@@ -27,7 +27,7 @@ def main(prg):
                 input_asp.append(a)
             elif a.name() == "has_output":
                 output_asp.append(a)
-
+        
     prg.load("ontology_base_modified.lp")
     prg.ground([("base", [])])
     prg.solve(on_model = on_model)
@@ -60,6 +60,19 @@ def main(prg):
     print output_cat
     print in_out
     
+    instr_out = {}
+    for key, value in in_out.items():
+        instr_out[str(key)] = {}
+        instr_out[str(key)]["input"] = []
+        instr_out[str(key)]["output"] = []
+        for v in value["input"]:
+            instr_out[str(key)]["input"].append(str(v))
+        for v in value["output"]:
+            instr_out[str(key)]["output"].append(str(v))
+            
+    with open('in_out.txt', 'w') as answer:
+        answer.write(json.dumps(instr_out))
+        
     print "\nGenerating Phylo\n"
     
     f = open('Phylo.gf', 'w')
