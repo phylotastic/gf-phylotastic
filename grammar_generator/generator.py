@@ -8,6 +8,9 @@ import random
 import json
 from pprint import pprint
 
+filter_out_params = ["http_response_time", "http_status_code_int", 
+                     "resource_HTTPCode", "resource_ConnectionTime"]
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -21,14 +24,36 @@ class bcolors:
 def main(prg):
     output_asp = []
     input_asp  = []
+    class_asp  = []
+    instance_of_asp = []
+    direct_asp = []
+    subclass   = []
+    klass      = {}
+    direct_inheritance = {}
+    
     def on_model(model):
         for a in model.atoms():
             if a.name() == "has_input":
                 input_asp.append(a)
             elif a.name() == "has_output":
                 output_asp.append(a)
-        
-    prg.load("ontology_base_modified.lp")
+            elif a.name() == "direct_instance":
+                instance_of_asp.append(a)
+            elif a.name() == "subClass":
+                subclass.append(a)
+            elif a.name() == "class":
+                class_asp.append(a)
+            elif a.name() == "direct_child":
+                direct_asp.append(a)
+                
+    # prg.load("ontology_base_modified.lp")
+    prg.load("ontology_TESTING.lp")
+    prg.add("base", [], "has_input(S, F, I) :- instance_operation_has_input_has_data_format(S, I, F).")
+    prg.add("base", [], "has_output(S, F, O) :- instance_operation_has_output_has_data_format(S, O, F).")
+    prg.add("base", [], "not_direct_child(A, B) :- subClass(A, B), subClass(A, C), subClass(C, B), A != C, B != C, A != B.")
+    prg.add("base", [], "direct_child(A, B) :- not not_direct_child(A, B), subClass(A, B), A != B.")
+    prg.add("base", [], "not_direct_instance(A, B) :- isInstanceOf(A, C), subClass(C, B), isInstanceOf(A, B), B != C.")
+    prg.add("base", [], "direct_instance(A, B) :- not not_direct_instance(A, B), isInstanceOf(A, B).")
     prg.ground([("base", [])])
     prg.solve(on_model = on_model)
     
@@ -37,29 +62,73 @@ def main(prg):
     
     in_out = {}
     
-    input_cat = {}
+    input_classes = {}
     for i in input_asp:
         a = i.args()
-        input_cat[str(a[1])] = ''
+        input_classes[str(a[2])] = []
         if a[0] in in_out.keys():
-            in_out[a[0]]["input"].append(a[1])
+            in_out[a[0]]["input"].append(a[2])
         else:
             in_out[a[0]] = {}
-            in_out[a[0]]["input"] = [a[1]]
-        
-    output_cat = {}
+            in_out[a[0]]["input"] = [a[2]]
+    
+    # filter out http_response_time http_status_code_int 
+    output_classes = {}
     for o in output_asp:
         a = o.args()
-        output_cat[str(a[1])] = ''
-        if "output" in in_out[a[0]].keys():
-            in_out[a[0]]["output"].append(a[1])
+        if str(a[2]) in filter_out_params:
+            continue
+        output_classes[str(a[2])] = []
+        if a[0] in in_out.keys():
+            if "output" in in_out[a[0]].keys():
+                in_out[a[0]]["output"].append(a[2])
+            else:
+                in_out[a[0]]["output"] = [a[2]]
         else:
-            in_out[a[0]]["output"] = [a[1]]
-
-    print input_cat
-    print output_cat
-    print in_out
+            in_out[a[0]] = {}
+            in_out[a[0]]["input"] = []
+            in_out[a[0]]["output"] = [a[2]]
+            
+            
+    for key, value in in_out.items():
+        if "output" not in value.keys():
+            value["output"] = []
     
+    instances = {}
+    for instance in instance_of_asp:
+        if instance.args()[0] in in_out.keys():
+            instances[ str(instance.args()[0]) ] = str(instance.args()[1])
+    
+    for s in subclass:
+        if str(s.args()[0]) in input_classes.keys():
+            input_classes[ str(s.args()[0]) ].append( str(s.args()[1]) )
+            
+        if str(s.args()[0]) in output_classes.keys():
+            output_classes[ str(s.args()[0]) ].append( str(s.args()[1]) )
+        
+    # print "Instances"
+    # print instances
+    
+    print input_classes
+    print output_classes
+
+    with open('ser_instances.json', 'w') as outfile:
+        json.dump(instances, outfile)
+    
+    with open('input_classes.json', 'w') as outfile:
+        json.dump(input_classes, outfile)
+    
+    with open('output_classes.json', 'w') as outfile:
+        json.dump(output_classes, outfile)
+
+    for d in direct_asp:
+        if str(d.args()[0]) not in direct_inheritance.keys():
+            direct_inheritance[ str(d.args()[0]) ] = []
+        direct_inheritance[ str(d.args()[0]) ].append( str(d.args()[1]) )
+        
+    with open('direct_inheritance.json', 'w') as outfile:
+        json.dump(direct_inheritance, outfile)
+        
     instr_out = {}
     for key, value in in_out.items():
         instr_out[str(key)] = {}
@@ -70,7 +139,7 @@ def main(prg):
         for v in value["output"]:
             instr_out[str(key)]["output"].append(str(v))
             
-    with open('in_out.txt', 'w') as answer:
+    with open('in_out.json', 'w') as answer:
         answer.write(json.dumps(instr_out))
         
     print "\nGenerating Phylo\n"
@@ -82,61 +151,125 @@ def main(prg):
     f.write('    cat\n')
     f.write('        Message;\n')
 
-    for i in input_cat:
-        f.write('        ' + i + ";\n")
+    f.write("        Input;\n")
+    f.write("        Output;\n")
     
-    for o in output_cat:
-        if o not in input_cat:
-            f.write('        ' + o + ";\n")
+    # for i in input_classes:
+        # f.write('        ' + i + ";\n")
+    
+    # for o in output_classes:
+    #     if o not in input_classes:
+    #         f.write('        ' + o + ";\n")
         
     f.write('    fun\n')
     
-    for klass, io in in_out.items():
-        func = str(klass) + ": " 
+    for instance, io in in_out.items():
+        func_comment = "-- " + str(instance) + ": " 
+        func = "f_" + str(instance) + ": " 
         for idx, val in enumerate(io['input']):
             if idx == 0:
-                func = func + str(val)
+                func_comment = func_comment + str(val)
+                func = func + "Input"
             else:
-                func = func + " -> " + str(val)
-
-        for val in io['output']:
-            func = func + " -> " + str(val)
+                func_comment = func_comment + " -> " + str(val)
+                func = func + " -> Input"
+                                
+        for idx, val in enumerate(io['output']):
+            if idx == 0 and len(io['input']) == 0:
+                func = func + "Output" 
+            else:
+                func_comment = func_comment + " -> " + str(val)
+                func = func + " -> Output" 
 
         func = func + " -> Message;"
+        f.write('        ' + func_comment + "\n")
         f.write('        ' + func + "\n")
-    
-    for i in input_cat:
-        f.write('        ' + "p_" + i + ": " + i + ";\n")
-    
-    for o in output_cat:
-        if o not in input_cat:
-            f.write('        ' + "p_" + o + ": " + o + ";\n")
 
+    for k in input_classes:
+        f.write('        ' + "i_" + k + ": Input;\n")
+    print input_classes
+    input_classes = set( val for dic in input_classes.values() for val in dic)
+    print input_classes
+    for upper_classes in input_classes:
+        f.write('        ' + "i_" + str(upper_classes) + ": Input;\n")
+            
+    for k in output_classes:
+        f.write('        ' + "o_" + k + ": Output;\n")
+    output_classes = set( val for dic in output_classes.values() for val in dic)
+    for upper_classes in output_classes:
+        f.write('        ' + "o_" + str(upper_classes) + ": Output;\n")
+            
     f.write('}')
     f.close()
     
     sentence_models = {
+        "10": [
+            {
+                "s": "mkS (mkCl subject_in p_in_1);",
+                "operation": {
+                    "subject_in": ["input of subject", "subject\'s input"]
+                },
+                "accept_conjunctive": False
+            }
+        ],
+        "11": [
+           {
+               "s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out p_out_1 ));",
+               "operation": {
+                   "subject_in": ["input of subject", "subject\'s input"],
+                   "subject_out": ["output of subject", "subject\'s output"]
+               },
+               "accept_conjunctive": False
+           },
+           {
+               "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") p_out_1 ));",
+               "operation": {
+                   "subject_in": ["subject"],
+                   "subject_out": ["it"]
+               },
+               "accept_conjunctive": True
+           },
+           {
+               "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1 ));",
+               "operation": {
+                   "subject_in": ["subject"],
+                   "subject_out": ["it"]
+               },
+               "accept_conjunctive": True
+           }
+        ],
         "12": [
             {
                 "s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out (mkNP both7and_DConj p_out_1 p_out_2)));",
                 "operation": {
                     "subject_in": ["input of subject", "subject\'s input"],
                     "subject_out": ["output of subject", "subject\'s output"]
-                }
+                },
+               "accept_conjunctive": False
             },
             {
                 "s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP both7and_DConj p_out_1 p_out_2) subject_out));",
                 "operation": {
                     "subject_in": ["input of subject", "subject\'s input"],
                     "subject_out": ["output of subject", "subject\'s output"]
-                }
+                },
+               "accept_conjunctive": False
             },
             {
                 "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj p_out_1 p_out_2)));",
                 "operation": {
                     "subject_in": ["subject"],
                     "subject_out": ["it"]
-                }
+                },
+                "accept_conjunctive": True
+            },
+            {
+                "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj p_out_1 p_out_2) ));",
+                "operation": {
+                    "subject_in": ["subject"],
+                    "subject_out": ["it"]
+                },
+                "accept_conjunctive": True
             }
         ],
         "13": [
@@ -145,21 +278,41 @@ def main(prg):
                 "operation": {
                     "subject_in": ["input of subject", "subject\'s input"],
                     "subject_out": ["output of subject", "subject\'s output"]
-                }
+                },
+               "accept_conjunctive": False
             },
             {
                 "s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) subject_out));",
                 "operation": {
                     "subject_in": ["input of subject", "subject\'s input"],
                     "subject_out": ["output of subject", "subject\'s output"]
-                }
+                },
+               "accept_conjunctive": False
             },
             {
                 "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3)))));",
                 "operation": {
                     "subject_in": ["subject"],
                     "subject_out": ["it"]
-                }
+                },
+                "accept_conjunctive": True
+            },
+            {
+                "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) ));",
+                "operation": {
+                    "subject_in": ["subject"],
+                    "subject_out": ["it"]
+                },
+                "accept_conjunctive": True
+            }
+        ],
+        "01": [
+            {
+                "s": "mkS (mkCl subject_out p_out_1);",
+                "operation": {
+                    "subject_out": ["output of subject", "subject\'s output"]
+                },
+                "accept_conjunctive": False
             }
         ],
         "21": [
@@ -168,14 +321,16 @@ def main(prg):
                 "operation": {
                     "subject_in": ["input of subject", "subject\'s input"],
                     "subject_out": ["output of subject", "subject\'s output"]
-                }
+                },
+               "accept_conjunctive": False
             },
             {
                 "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") (mkNP and_Conj p_in_1 p_in_2))) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1));",
                 "operation": {
                     "subject_in": ["subject"],
                     "subject_out": ["it"]
-                }
+                },
+               "accept_conjunctive": False
             }
         ]
     }
@@ -186,51 +341,39 @@ def main(prg):
     f.write('concrete PhyloEng of Phylo = open SyntaxEng, ParadigmsEng, ConstructorsEng in {\n')
     f.write('    lincat\n')
     f.write('        Message = S;\n')
-    
-    for i in input_cat:
-        f.write('        ' + i + "= NP;\n")
-    
-    for o in output_cat:
-        if o not in input_cat:
-            f.write('        ' + o + "= NP;\n")
-    
+    f.write("        Input = NP;\n")
+    f.write("        Output = NP;\n")
     f.write('    lin\n')
     
     operation = []
+    conjunctive = {}
     
-    for klass, io in in_out.items():
+    failed_generation = 0
+    
+    for instance, io in in_out.items():
+        conjunctive[ str(instance) ] = {}
         model_cat = str( len(io['input']) ) + str( len(io['output']) )
         if model_cat in sentence_models.keys():
             sm = random.choice( sentence_models[model_cat] )
             tree = sm["s"]
             
-            func = str(klass)
-            for idx, val in enumerate(io['input']):
-                gf_param = "p_" + str(val)
+            conjunctive[ str(instance) ]["accept_conjunctive"] = sm["accept_conjunctive"]
+                
+            func = "f_" + str(instance)
+            for idx, val in enumerate( io['input'] ):
+                gf_param = "i_" + str(val)
                 func = func + " " + gf_param
                 tree = tree.replace("p_in_" + str(idx + 1), gf_param)
-                if str(val) in param_linearization:
-                    f.write("        " + gf_param + " = mkNP( mkCN (mkN \"" + param_linearization[str(val)] + "\"));\n")
-                else:
-                    li = raw_input('Enter linearization for \'' + str(val) + '\': ')
-                    param_linearization[str(val)] = li
-                    f.write("        " + gf_param + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
-            
-            for idx, val in enumerate(io['output']):
-                gf_param = "p_" + str(val)
+                
+            for idx, val in enumerate( io['output'] ):
+                gf_param = "o_" + str(val)
                 func = func + " " + gf_param
                 tree = tree.replace("p_out_" + str(idx + 1), gf_param)
-                if str(val) in param_linearization:
-                    f.write("        " + gf_param + " = mkNP( mkCN (mkN \"" + param_linearization[str(val)] + "\"));\n")
-                else:
-                    li = raw_input('Enter linearization for \'' + str(val) + '\': ')
-                    param_linearization[str(val)] = li
-                    f.write("        " + gf_param + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
-             
+                
             for k in sm["operation"].keys():
                 operation_linearization = random.choice( sm["operation"][k] )
-                operation_linearization = operation_linearization.replace("subject", str(klass))
-                operation_name = k.replace("subject", str(klass))
+                operation_linearization = operation_linearization.replace("subject", str(instance))
+                operation_name = k.replace("subject", str(instance))
                 tree = tree.replace(k, operation_name)
                 operation.append({ operation_name: operation_linearization })
                 
@@ -238,8 +381,41 @@ def main(prg):
             f.write('        ' + func + "\n")
         else:
             # when you can not find any model satisfing in_out conditions
-            print((bcolors.WARNING + "\nWarning: Can not find suitable sentence models for {} which has {} input and {} output\n" + bcolors.ENDC).format(klass, len(io['input']), len(io['output']) ))
+            print((bcolors.FAIL + "\nWarning: Can not find suitable sentence models for {} which has {} input and {} output\n" + bcolors.ENDC).format(instance, len(io['input']), len(io['output']) ))
+            failed_generation += 1
+            
+    for k in input_classes:
+        if k in param_linearization:
+            f.write("        i_" + k + " = mkNP( mkCN (mkN \"" + param_linearization[k] + "\"));\n")
+        else:
+            li = raw_input('Enter linearization for \'' + k + '\': ')
+            param_linearization[k] = li
+            f.write("        i_" + k + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
     
+    for upper_classes in input_classes:
+        if str(upper_classes) in param_linearization:
+            f.write("        i_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + param_linearization[ str(upper_classes) ] + "\"));\n")
+        else:
+            li = raw_input('Enter linearization for \'' + str(upper_classes) + '\': ')
+            param_linearization[str(upper_classes)] = li
+            f.write("        i_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
+    
+    for k in output_classes:
+        if k in param_linearization:
+            f.write("        o_" + k + " = mkNP( mkCN (mkN \"" + param_linearization[k] + "\"));\n")
+        else:
+            li = raw_input('Enter linearization for \'' + k + '\': ')
+            param_linearization[k] = li
+            f.write("        o_" + k + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
+    
+    for upper_classes in output_classes:
+        if str(upper_classes) in param_linearization:
+            f.write("        o_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + param_linearization[ str(upper_classes) ] + "\"));\n")
+        else:
+            li = raw_input('Enter linearization for \'' + str(upper_classes) + '\': ')
+            param_linearization[str(upper_classes)] = li
+            f.write("        o_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
+        
     print operation
     # TODO: combine linearization and learning from web service description
     f.write('    oper\n')
@@ -247,12 +423,14 @@ def main(prg):
         f.write('        ' + o.keys()[0] + ' = mkNP (mkCN (mkN \"' + o[o.keys()[0]] + '\"));\n')
     f.write('}')
     f.close()
-    
-    print("\nTotal generated GF functions is {}\n".format(len(in_out)))
+        
+    print( (bcolors.FAIL + "\nFailed to generate {} out of {} GF functions\n" + bcolors.ENDC).format(failed_generation, len(in_out)) )
     
     # write to file json what we learnt.
     with open('linearization.json', 'w') as outfile:
         json.dump(param_linearization, outfile)
-        
+    
+    with open('conjunctive.json', 'w') as outfile:
+        json.dump(conjunctive, outfile)
     # TODO: class level
 #end.

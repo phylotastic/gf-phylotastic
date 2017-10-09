@@ -9,6 +9,7 @@ def read_file(fname):
 
 def get_function(lines, func_name):
     func = list(filter(lambda x: x.find(func_name) == 0, lines))
+    embed()
     if not func:
         return ""
     return func[0].replace(" -> DMessage;", "").replace(" -> Message;", "").replace("Message;", "").replace(":", "").replace(" -> ", " ")
