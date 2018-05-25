@@ -1,0 +1,12 @@
+{
+  "params": {
+    "Protein_flexibility_and_motion_analysis": "protein_flexibility_and_motion_analysis",
+    "DNA_substitution_modelling": "dna_substitution_modelling",
+    "Modelling_and_simulation": "modelling_and_simulation_operation",
+    "Molecular_dynamics_simulation": "molecular_dynamics_simulation",
+    "Zinc_finger_prediction": "Zinc_finger_prediction"
+  },
+  "func": {
+    "subclassOf(Protein_flexibility_and_motion_analysis,Molecular_dynamics_simulation)": "a protein_flexibility_and_motion_analysis is a molecular_dynamics_simulation  ."
+  }
+}

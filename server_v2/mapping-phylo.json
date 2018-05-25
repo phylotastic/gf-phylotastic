@@ -1,0 +1,13 @@
+{
+  "params": {
+    "Com": "company",
+    "Apple": "Apple_Inc",
+    "Beats": "Beats",
+    "Sgcc": "Silicon_Grail_Corp_Chalice",
+    "Sg": "Silicon_Grail"
+  },
+  "func": {
+    "acquire(Apple, Beats)": "Apple_Inc acquires Beats .",
+    "own(Apple, Beats)": "Beats is a company of Apple_Inc ."
+  }
+}

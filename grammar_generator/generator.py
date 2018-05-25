@@ -11,6 +11,8 @@ from pprint import pprint
 filter_out_params = ["http_response_time", "http_status_code_int", 
                      "resource_HTTPCode", "resource_ConnectionTime"]
 
+sentence_models_file = "../grammar_generator/sentence_models.json"
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -30,6 +32,8 @@ def main(prg):
     subclass   = []
     klass      = {}
     direct_inheritance = {}
+    data_format_input = []
+    data_format_output = []
     
     def on_model(model):
         for a in model.atoms():
@@ -45,6 +49,10 @@ def main(prg):
                 class_asp.append(a)
             elif a.name() == "direct_child":
                 direct_asp.append(a)
+            elif a.name() == "instance_operation_has_input_has_data_format":
+                data_format_input.append(a)
+            elif a.name() == "instance_operation_has_output_has_data_format":
+                data_format_output.append(a)
                 
     # prg.load("ontology_base_modified.lp")
     prg.load("ontology_TESTING.lp")
@@ -153,6 +161,7 @@ def main(prg):
 
     f.write("        Input;\n")
     f.write("        Output;\n")
+    f.write("        Format;\n")
     
     # for i in input_classes:
         # f.write('        ' + i + ";\n")
@@ -166,6 +175,7 @@ def main(prg):
     for instance, io in in_out.items():
         func_comment = "-- " + str(instance) + ": " 
         func = "f_" + str(instance) + ": " 
+        
         for idx, val in enumerate(io['input']):
             if idx == 0:
                 func_comment = func_comment + str(val)
@@ -182,14 +192,52 @@ def main(prg):
                 func = func + " -> Output" 
 
         func = func + " -> Message;"
-        f.write('        ' + func_comment + "\n")
+        # f.write('        ' + func_comment + "\n")
         f.write('        ' + func + "\n")
+    
+    f.write("        tree_figure: Format -> Format -> Message;\n")
+    
+    data_format = []
+    data_format_func = []
+    data_format_json = {}
+    for a in data_format_input:
+        if str(a.args()[0]) not in data_format_func:
+            format_input_func = "d_i_" + str(a.args()[0]) + ": Input -> Format -> Message;"
+            f.write('        ' + format_input_func + "\n")
 
+        if str(a.args()[0]) not in data_format_json:
+            data_format_func.append( str(a.args()[0]) )
+            data_format_json[ str(a.args()[0]) ] = []
+            
+        data_format_json[ str(a.args()[0]) ].append({ "input": str(a.args()[1]), "data": str(a.args()[2]) })
+        
+        if str(a.args()[2]) not in data_format:
+            data_format.append( str(a.args()[2]) )
+    
+    data_format_func = []
+    for a in data_format_output:
+        if str(a.args()[0]) not in data_format_func:
+            format_output_func = "d_o_" + str(a.args()[0]) +  ": Output -> Format -> Message;"
+            f.write('        ' + format_output_func + "\n")
+
+
+        if str(a.args()[0]) not in data_format_json:
+            data_format_func.append( str(a.args()[0]) )
+            data_format_json[ str(a.args()[0]) ] = []
+        
+        data_format_json[ str(a.args()[0]) ].append({ "output": str(a.args()[1]), "data": str(a.args()[2]) })
+            
+        if str(a.args()[2]) not in data_format:
+            data_format.append( str(a.args()[2]) )
+    
+    with open('data_format.json', 'w') as outfile:
+        json.dump( data_format_json, outfile)
+            
     for k in input_classes:
         f.write('        ' + "i_" + k + ": Input;\n")
-    print input_classes
+    # print input_classes
     input_classes = set( val for dic in input_classes.values() for val in dic)
-    print input_classes
+    # print input_classes
     for upper_classes in input_classes:
         f.write('        ' + "i_" + str(upper_classes) + ": Input;\n")
             
@@ -198,143 +246,19 @@ def main(prg):
     output_classes = set( val for dic in output_classes.values() for val in dic)
     for upper_classes in output_classes:
         f.write('        ' + "o_" + str(upper_classes) + ": Output;\n")
-            
+    
+    for a in data_format:
+        f.write('        ' + "d_" + a + ": Format;\n")
+    
+    f.write("        d_figure: Format;\n")
+    f.write("        d_tree: Format;\n")
+    
     f.write('}')
     f.close()
     
-    sentence_models = {
-        "10": [
-            {
-                "s": "mkS (mkCl subject_in p_in_1);",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"]
-                },
-                "accept_conjunctive": False
-            }
-        ],
-        "11": [
-           {
-               "s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out p_out_1 ));",
-               "operation": {
-                   "subject_in": ["input of subject", "subject\'s input"],
-                   "subject_out": ["output of subject", "subject\'s output"]
-               },
-               "accept_conjunctive": False
-           },
-           {
-               "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") p_out_1 ));",
-               "operation": {
-                   "subject_in": ["subject"],
-                   "subject_out": ["it"]
-               },
-               "accept_conjunctive": True
-           },
-           {
-               "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1 ));",
-               "operation": {
-                   "subject_in": ["subject"],
-                   "subject_out": ["it"]
-               },
-               "accept_conjunctive": True
-           }
-        ],
-        "12": [
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out (mkNP both7and_DConj p_out_1 p_out_2)));",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"],
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-               "accept_conjunctive": False
-            },
-            {
-                "s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP both7and_DConj p_out_1 p_out_2) subject_out));",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"],
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-               "accept_conjunctive": False
-            },
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj p_out_1 p_out_2)));",
-                "operation": {
-                    "subject_in": ["subject"],
-                    "subject_out": ["it"]
-                },
-                "accept_conjunctive": True
-            },
-            {
-                "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj p_out_1 p_out_2) ));",
-                "operation": {
-                    "subject_in": ["subject"],
-                    "subject_out": ["it"]
-                },
-                "accept_conjunctive": True
-            }
-        ],
-        "13": [
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3)))));",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"],
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-               "accept_conjunctive": False
-            },
-            {
-                "s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) subject_out));",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"],
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-               "accept_conjunctive": False
-            },
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3)))));",
-                "operation": {
-                    "subject_in": ["subject"],
-                    "subject_out": ["it"]
-                },
-                "accept_conjunctive": True
-            },
-            {
-                "s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) ));",
-                "operation": {
-                    "subject_in": ["subject"],
-                    "subject_out": ["it"]
-                },
-                "accept_conjunctive": True
-            }
-        ],
-        "01": [
-            {
-                "s": "mkS (mkCl subject_out p_out_1);",
-                "operation": {
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-                "accept_conjunctive": False
-            }
-        ],
-        "21": [
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in (mkNP both7and_DConj p_in_1 p_in_2))) (mkS (mkCl subject_out p_out_1));",
-                "operation": {
-                    "subject_in": ["input of subject", "subject\'s input"],
-                    "subject_out": ["output of subject", "subject\'s output"]
-                },
-               "accept_conjunctive": False
-            },
-            {
-                "s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") (mkNP and_Conj p_in_1 p_in_2))) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1));",
-                "operation": {
-                    "subject_in": ["subject"],
-                    "subject_out": ["it"]
-                },
-               "accept_conjunctive": False
-            }
-        ]
-    }
-    
+    with open( sentence_models_file ) as s:    
+        sentence_models = json.load( s )
+        
     print "\nGenerating PhyloEng\n"
     
     f = open('PhyloEng.gf', 'w')
@@ -343,6 +267,7 @@ def main(prg):
     f.write('        Message = S;\n')
     f.write("        Input = NP;\n")
     f.write("        Output = NP;\n")
+    f.write("        Format = NP;\n")
     f.write('    lin\n')
     
     operation = []
@@ -383,6 +308,28 @@ def main(prg):
             # when you can not find any model satisfing in_out conditions
             print((bcolors.FAIL + "\nWarning: Can not find suitable sentence models for {} which has {} input and {} output\n" + bcolors.ENDC).format(instance, len(io['input']), len(io['output']) ))
             failed_generation += 1
+    
+    data_format_func = []
+    for a in data_format_input:
+        if str(a.args()[0]) not in data_format_func:
+            fname = "d_i_" + str(a.args()[0])
+            i = " i_" + str(a.args()[1])
+            d = " d_" + str(a.args()[2])
+            format_input_func = fname + i + d + " = mkS (mkCl" + i + " (mkV2 \"use\")" + d + ");"
+            f.write('        ' + format_input_func + "\n")
+            data_format_func.append( str(a.args()[0]) )
+
+    data_format_func = []
+    for a in data_format_output:
+        if str(a.args()[0]) not in data_format_func:
+            fname = "d_o_" + str(a.args()[0])
+            o = " o_" + str(a.args()[1])
+            d = " d_" + str(a.args()[2])
+            format_output_func = fname + o + d + " = mkS (mkCl" + o + " (mkV2 \"use\")" + d + ");"
+            f.write('        ' + format_output_func + "\n")
+            data_format_func.append( str(a.args()[0]) )
+    
+    f.write("        tree_figure d_figure d_tree = mkS (mkCl d_figure (mkV2 \"illustrate\") d_tree);\n")
             
     for k in input_classes:
         if k in param_linearization:
@@ -392,14 +339,6 @@ def main(prg):
             param_linearization[k] = li
             f.write("        i_" + k + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
     
-    for upper_classes in input_classes:
-        if str(upper_classes) in param_linearization:
-            f.write("        i_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + param_linearization[ str(upper_classes) ] + "\"));\n")
-        else:
-            li = raw_input('Enter linearization for \'' + str(upper_classes) + '\': ')
-            param_linearization[str(upper_classes)] = li
-            f.write("        i_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
-    
     for k in output_classes:
         if k in param_linearization:
             f.write("        o_" + k + " = mkNP( mkCN (mkN \"" + param_linearization[k] + "\"));\n")
@@ -408,19 +347,21 @@ def main(prg):
             param_linearization[k] = li
             f.write("        o_" + k + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
     
-    for upper_classes in output_classes:
-        if str(upper_classes) in param_linearization:
-            f.write("        o_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + param_linearization[ str(upper_classes) ] + "\"));\n")
+    for k in data_format:
+        if k in param_linearization:
+            f.write("        d_" + k + " = mkNP( mkCN (mkN \"" + param_linearization[k] + " format\"));\n")
         else:
-            li = raw_input('Enter linearization for \'' + str(upper_classes) + '\': ')
-            param_linearization[str(upper_classes)] = li
-            f.write("        o_" + str(upper_classes) + " = mkNP( mkCN (mkN \"" + li + "\"));\n")
+            f.write("        d_" + k + " = mkNP( mkCN (mkN \"" + str(k) + " format\"));\n")
+    
+    f.write("        d_figure = mkNP (mkCN (mkN \"Figure 1\"));\n")
+    f.write("        d_tree = mkNP (mkCN (mkN \"the extracted tree\"));\n")
         
     print operation
     # TODO: combine linearization and learning from web service description
     f.write('    oper\n')
     for o in operation:
         f.write('        ' + o.keys()[0] + ' = mkNP (mkCN (mkN \"' + o[o.keys()[0]] + '\"));\n')
+    
     f.write('}')
     f.close()
         

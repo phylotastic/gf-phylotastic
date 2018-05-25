@@ -1,0 +1,111 @@
+{
+	"11": [{
+		"s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out p_out_1 ));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") p_out_1 ));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1 ));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}],
+	"10": [{
+		"s": "mkS (mkCl subject_in p_in_1);",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"]
+		},
+		"accept_conjunctive": false
+	}],
+	"13": [{
+		"s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3)))));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) subject_out));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3)))));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}, {
+		"s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj (mkListNP p_out_1 (mkListNP p_out_2 p_out_3))) ));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}],
+	"12": [{
+		"s": "mkS and_Conj (mkS (mkCl subject_in p_in_1)) (mkS (mkCl subject_out (mkNP both7and_DConj p_out_1 p_out_2)));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl p_in_1 subject_in)) (mkS (mkCl (mkNP both7and_DConj p_out_1 p_out_2) subject_out));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") p_in_1)) (mkS (mkCl subject_out (mkV2 \"return\") (mkNP and_Conj p_out_1 p_out_2)));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}, {
+		"s": "mkS (mkCl subject_in (mkV2V (mkV \"use\") noPrep to_Prep) p_in_1 (mkVP (mkV2 \"extract\") (mkNP and_Conj p_out_1 p_out_2) ));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": true
+	}],
+	"21": [{
+		"s": "mkS and_Conj (mkS (mkCl subject_in (mkNP both7and_DConj p_in_1 p_in_2))) (mkS (mkCl subject_out p_out_1));",
+		"operation": {
+			"subject_in": ["input of subject", "subject's input"],
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}, {
+		"s": "mkS and_Conj (mkS (mkCl subject_in (mkV2 \"require\") (mkNP and_Conj p_in_1 p_in_2))) (mkS (mkCl subject_out (mkV2 \"return\") p_out_1));",
+		"operation": {
+			"subject_in": ["subject"],
+			"subject_out": ["it"]
+		},
+		"accept_conjunctive": false
+	}],
+	"01": [{
+		"s": "mkS (mkCl subject_out p_out_1);",
+		"operation": {
+			"subject_out": ["output of subject", "subject's output"]
+		},
+		"accept_conjunctive": false
+	}]
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+   <body>
+   
+      <form action = "http://localhost:5000" method = "POST">
+<!-- occur_concrete(phylotastic_ExtractSpeciesNames_From_Gene_Tree_GET,1)
+occur_concrete(phylotastic_ResolvedScientificNames_OT_TNRS_GET,3)
+occur_concrete(phylotastic_GenerateGeneTree_From_Genes,0)
+occur_concrete(phylotastic_GeneTree_Scaling,2)
+input(taxon_to_species_operation,set_of_names_1,resource_taxon)
+has_input_occur_service_class(names_extraction_tree,tree_1,resource_geneTree)
+output(names_resolution_operation,set_of_names_1,resource_SetOfSciName)
+has_output_occur_service_class(names_resolution_operation,set_of_names_1,resource_SetOfResolvedName) -->
+
+<!-- acquire(Apple,Sg)
+own(Sg,Sgcc)
+acquire(Apple,Sgcc) -->
+         <textarea rows="5" cols="60" name="atoms">
+subclassOf(Protein_flexibility_and_motion_analysis,Molecular_dynamics_simulation)   
+         </textarea>
+         <input type="submit"/>
+      </form>
+      
+      <div id="generated">
+        {% if paragraph|length != 0 %}
+          <h1>Generated text</h1>
+          <ul id="texts">
+              {% for e in paragraph %}
+                  <li>{{ e }}</li>
+              {% endfor %}
+          </ul>
+        {% endif %}
+      
+        {% if errors|length != 0 %}
+          <h1>Errors</h1>
+          <ul id="errors">
+              {% for e in errors %}
+                  <li>{{ e }}</li>
+              {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+   </body>
+</html>
