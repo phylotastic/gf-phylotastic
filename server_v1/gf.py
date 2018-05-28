@@ -23,6 +23,8 @@ data_format_file = "../grammar_generator/data_format.json"
 
 app = Flask(__name__)
 
+app.config.from_pyfile('../config.cfg')
+
 @app.route('/')
 def upload_file():
     return render_template('upload.html')
@@ -269,4 +271,6 @@ def traverse_up(hierarchy, node, up):
         return traverse_up(hierarchy, hierarchy[node][0], up - 1)
         
 if __name__ == '__main__':
-   app.run(debug = True)
+    host = app.config['HOST']
+    port = app.config['PORT']
+    app.run(host = host, debug = True)
