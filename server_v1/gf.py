@@ -23,6 +23,7 @@ direct_inheritance_file = "../grammar_generator/direct_inheritance.json"
 data_format_file = "../grammar_generator/data_format.json"
 
 app = Flask(__name__)
+CORS(app)
 
 app.config.from_pyfile('../config.cfg')
 
