@@ -1,7 +1,8 @@
 # last_index in workflow composition
 # categorize services for each step in ontology?
 
-from flask import Flask, render_template, request, jsonify, flask_cors
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS, cross_origin
 from werkzeug import secure_filename
 from IPython import embed
 import json
