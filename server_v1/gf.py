@@ -1,7 +1,7 @@
 # last_index in workflow composition
 # categorize services for each step in ontology?
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from werkzeug import secure_filename
 from IPython import embed
 import json
@@ -31,52 +31,58 @@ def upload_file():
 	
 @app.route('/generate', methods = ['POST'])
 def generate():
-    if request.method == 'POST':
-        f = request.files['file']
-        # f.save(secure_filename(f.filename))
-        content = f.read()
-        j = json.loads( content )
-        messages = {}
-        ab_trees = []
-        linearized_sentences = []
-        paragraph = ""
-        steps = []
-        
-        with open( in_out_file ) as iofile:    
-            in_out = json.load( iofile )
-        
-        with open( conjunctive_file ) as cfile:    
-            conjunctive = json.load( cfile )
-            
-        for service in j["workflow_plan"][0]["plan"]:
-            m = {}
-            m["abstract_tree"] = {}
-            
-            # query input, output of service
-            ser_in_out = in_out[ service["operation_name"] ]
-            
-            steps.append( {service["operation_name"]: ser_in_out} )
-
-            m["abstract_tree"] = abtree_construction( service["operation_name"], ser_in_out )
-                        
-            ab_trees.append(m)
-        
-        for m in ab_trees:
-            lm = pgf.readExpr( m["abstract_tree"] )
-            linearized_sentences.append( eng.linearize(lm).capitalize() )
-        
-        for ind, s in enumerate(linearized_sentences):
-            if (ind < len(linearized_sentences) - 1 and 
-                conjunctive[ j["workflow_plan"][0]["plan"][ind]["operation_name"] ]["accept_conjunctive"] and
-                ind > 0):
-                paragraph += "Then, "
-            paragraph += s + ". "
-        
-        messages["paragraph"] = paragraph
-        messages["steps"] = steps
-        
-    return json.dumps(messages)
-
+    # if request.method == 'POST':
+#         f = request.files['file']
+#         # f.save(secure_filename(f.filename))
+#         content = f.read()
+#         j = json.loads( content )
+#         messages = {}
+#         ab_trees = []
+#         linearized_sentences = []
+#         paragraph = ""
+#         steps = []
+#
+#         with open( in_out_file ) as iofile:
+#             in_out = json.load( iofile )
+#
+#         with open( conjunctive_file ) as cfile:
+#             conjunctive = json.load( cfile )
+#
+#         for service in j["workflow_plan"][0]["plan"]:
+#             m = {}
+#             m["abstract_tree"] = {}
+#
+#             # query input, output of service
+#             ser_in_out = in_out[ service["operation_name"] ]
+#
+#             steps.append( {service["operation_name"]: ser_in_out} )
+#
+#             m["abstract_tree"] = abtree_construction( service["operation_name"], ser_in_out )
+#
+#             ab_trees.append(m)
+#
+#         for m in ab_trees:
+#             lm = pgf.readExpr( m["abstract_tree"] )
+#             linearized_sentences.append( eng.linearize(lm).capitalize() )
+#
+#         for ind, s in enumerate(linearized_sentences):
+#             if (ind < len(linearized_sentences) - 1 and
+#                 conjunctive[ j["workflow_plan"][0]["plan"][ind]["operation_name"] ]["accept_conjunctive"] and
+#                 ind > 0):
+#                 paragraph += "Then, "
+#             paragraph += s + ". "
+#
+#         messages["paragraph"] = paragraph
+#         messages["steps"] = steps
+#    return json.dumps(messages)
+#
+    print(request.get_json())
+    
+    result = {}
+    result["blob"] = "AAAAAAAAA"
+    
+    return jsonify(result)
+    
 @app.route('/traversing_ontology_generate', methods = ['POST'])
 def traversing_ontology_generate():
     print request.form
