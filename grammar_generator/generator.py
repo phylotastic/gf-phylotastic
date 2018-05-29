@@ -1,6 +1,6 @@
 #script (python)
 
-import gringo
+import clingo
 import datetime
 import re 
 from IPython import embed
@@ -36,26 +36,26 @@ def main(prg):
     data_format_output = []
     
     def on_model(model):
-        for a in model.atoms():
-            if a.name() == "has_input":
+        for a in model.symbols("atoms"):
+            if a.name == "has_input":
                 input_asp.append(a)
-            elif a.name() == "has_output":
+            elif a.name == "has_output":
                 output_asp.append(a)
-            elif a.name() == "direct_instance":
+            elif a.name == "direct_instance":
                 instance_of_asp.append(a)
-            elif a.name() == "subClass":
+            elif a.name == "subClass":
                 subclass.append(a)
-            elif a.name() == "class":
+            elif a.name == "class":
                 class_asp.append(a)
-            elif a.name() == "direct_child":
+            elif a.name == "direct_child":
                 direct_asp.append(a)
-            elif a.name() == "instance_operation_has_input_has_data_format":
+            elif a.name == "instance_operation_has_input_has_data_format":
                 data_format_input.append(a)
-            elif a.name() == "instance_operation_has_output_has_data_format":
+            elif a.name == "instance_operation_has_output_has_data_format":
                 data_format_output.append(a)
                 
     # prg.load("ontology_base_modified.lp")
-    prg.load("ontology_TESTING.lp")
+    prg.load("ontology_TESTING_Working.lp")
     prg.add("base", [], "has_input(S, F, I) :- instance_operation_has_input_has_data_format(S, I, F).")
     prg.add("base", [], "has_output(S, F, O) :- instance_operation_has_output_has_data_format(S, O, F).")
     prg.add("base", [], "not_direct_child(A, B) :- subClass(A, B), subClass(A, C), subClass(C, B), A != C, B != C, A != B.")
@@ -72,7 +72,7 @@ def main(prg):
     
     input_classes = {}
     for i in input_asp:
-        a = i.args()
+        a = i.arguments
         input_classes[str(a[2])] = []
         if a[0] in in_out.keys():
             in_out[a[0]]["input"].append(a[2])
@@ -83,7 +83,7 @@ def main(prg):
     # filter out http_response_time http_status_code_int 
     output_classes = {}
     for o in output_asp:
-        a = o.args()
+        a = o.arguments
         if str(a[2]) in filter_out_params:
             continue
         output_classes[str(a[2])] = []
@@ -104,15 +104,15 @@ def main(prg):
     
     instances = {}
     for instance in instance_of_asp:
-        if instance.args()[0] in in_out.keys():
-            instances[ str(instance.args()[0]) ] = str(instance.args()[1])
+        if instance.arguments[0] in in_out.keys():
+            instances[ str(instance.arguments[0]) ] = str(instance.arguments[1])
     
     for s in subclass:
-        if str(s.args()[0]) in input_classes.keys():
-            input_classes[ str(s.args()[0]) ].append( str(s.args()[1]) )
+        if str(s.arguments[0]) in input_classes.keys():
+            input_classes[ str(s.arguments[0]) ].append( str(s.arguments[1]) )
             
-        if str(s.args()[0]) in output_classes.keys():
-            output_classes[ str(s.args()[0]) ].append( str(s.args()[1]) )
+        if str(s.arguments[0]) in output_classes.keys():
+            output_classes[ str(s.arguments[0]) ].append( str(s.arguments[1]) )
         
     # print "Instances"
     # print instances
@@ -130,9 +130,9 @@ def main(prg):
         json.dump(output_classes, outfile)
 
     for d in direct_asp:
-        if str(d.args()[0]) not in direct_inheritance.keys():
-            direct_inheritance[ str(d.args()[0]) ] = []
-        direct_inheritance[ str(d.args()[0]) ].append( str(d.args()[1]) )
+        if str(d.arguments[0]) not in direct_inheritance.keys():
+            direct_inheritance[ str(d.arguments[0]) ] = []
+        direct_inheritance[ str(d.arguments[0]) ].append( str(d.arguments[1]) )
         
     with open('direct_inheritance.json', 'w') as outfile:
         json.dump(direct_inheritance, outfile)
@@ -201,34 +201,34 @@ def main(prg):
     data_format_func = []
     data_format_json = {}
     for a in data_format_input:
-        if str(a.args()[0]) not in data_format_func:
-            format_input_func = "d_i_" + str(a.args()[0]) + ": Input -> Format -> Message;"
+        if str(a.arguments[0]) not in data_format_func:
+            format_input_func = "d_i_" + str(a.arguments[0]) + ": Input -> Format -> Message;"
             f.write('        ' + format_input_func + "\n")
 
-        if str(a.args()[0]) not in data_format_json:
-            data_format_func.append( str(a.args()[0]) )
-            data_format_json[ str(a.args()[0]) ] = []
+        if str(a.arguments[0]) not in data_format_json:
+            data_format_func.append( str(a.arguments[0]) )
+            data_format_json[ str(a.arguments[0]) ] = []
             
-        data_format_json[ str(a.args()[0]) ].append({ "input": str(a.args()[1]), "data": str(a.args()[2]) })
+        data_format_json[ str(a.arguments[0]) ].append({ "input": str(a.arguments[1]), "data": str(a.arguments[2]) })
         
-        if str(a.args()[2]) not in data_format:
-            data_format.append( str(a.args()[2]) )
+        if str(a.arguments[2]) not in data_format:
+            data_format.append( str(a.arguments[2]) )
     
     data_format_func = []
     for a in data_format_output:
-        if str(a.args()[0]) not in data_format_func:
-            format_output_func = "d_o_" + str(a.args()[0]) +  ": Output -> Format -> Message;"
+        if str(a.arguments[0]) not in data_format_func:
+            format_output_func = "d_o_" + str(a.arguments[0]) +  ": Output -> Format -> Message;"
             f.write('        ' + format_output_func + "\n")
 
 
-        if str(a.args()[0]) not in data_format_json:
-            data_format_func.append( str(a.args()[0]) )
-            data_format_json[ str(a.args()[0]) ] = []
+        if str(a.arguments[0]) not in data_format_json:
+            data_format_func.append( str(a.arguments[0]) )
+            data_format_json[ str(a.arguments[0]) ] = []
         
-        data_format_json[ str(a.args()[0]) ].append({ "output": str(a.args()[1]), "data": str(a.args()[2]) })
+        data_format_json[ str(a.arguments[0]) ].append({ "output": str(a.arguments[1]), "data": str(a.arguments[2]) })
             
-        if str(a.args()[2]) not in data_format:
-            data_format.append( str(a.args()[2]) )
+        if str(a.arguments[2]) not in data_format:
+            data_format.append( str(a.arguments[2]) )
     
     with open('data_format.json', 'w') as outfile:
         json.dump( data_format_json, outfile)
@@ -311,23 +311,23 @@ def main(prg):
     
     data_format_func = []
     for a in data_format_input:
-        if str(a.args()[0]) not in data_format_func:
-            fname = "d_i_" + str(a.args()[0])
-            i = " i_" + str(a.args()[1])
-            d = " d_" + str(a.args()[2])
+        if str(a.arguments[0]) not in data_format_func:
+            fname = "d_i_" + str(a.arguments[0])
+            i = " i_" + str(a.arguments[1])
+            d = " d_" + str(a.arguments[2])
             format_input_func = fname + i + d + " = mkS (mkCl" + i + " (mkV2 \"use\")" + d + ");"
             f.write('        ' + format_input_func + "\n")
-            data_format_func.append( str(a.args()[0]) )
+            data_format_func.append( str(a.arguments[0]) )
 
     data_format_func = []
     for a in data_format_output:
-        if str(a.args()[0]) not in data_format_func:
-            fname = "d_o_" + str(a.args()[0])
-            o = " o_" + str(a.args()[1])
-            d = " d_" + str(a.args()[2])
+        if str(a.arguments[0]) not in data_format_func:
+            fname = "d_o_" + str(a.arguments[0])
+            o = " o_" + str(a.arguments[1])
+            d = " d_" + str(a.arguments[2])
             format_output_func = fname + o + d + " = mkS (mkCl" + o + " (mkV2 \"use\")" + d + ");"
             f.write('        ' + format_output_func + "\n")
-            data_format_func.append( str(a.args()[0]) )
+            data_format_func.append( str(a.arguments[0]) )
     
     f.write("        tree_figure d_figure d_tree = mkS (mkCl d_figure (mkV2 \"illustrate\") d_tree);\n")
             
