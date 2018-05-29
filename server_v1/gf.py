@@ -82,7 +82,6 @@ def generate():
     result["blob"] = paragraph
     result["steps"] = steps
     
-    embed()
     return jsonify(result)
     
 @app.route('/traversing_ontology_generate', methods = ['POST'])
