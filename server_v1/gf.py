@@ -60,11 +60,11 @@ def generate():
         m["abstract_tree"] = {}
 
         # query input, output of service
-        ser_in_out = in_out[ service["operation_name"] ]
+        ser_in_out = in_out[ service ]
 
-        steps.append( {service["operation_name"]: ser_in_out} )
+        steps.append( {service: ser_in_out} )
 
-        m["abstract_tree"] = abtree_construction( service["operation_name"], ser_in_out )
+        m["abstract_tree"] = abtree_construction( service, ser_in_out )
 
         ab_trees.append(m)
 
@@ -73,10 +73,10 @@ def generate():
         linearized_sentences.append( eng.linearize(lm).capitalize() )
 
     for ind, s in enumerate(linearized_sentences):
-        if (ind < len(linearized_sentences) - 1 and
-            conjunctive[ j["workflow_plan"][0]["plan"][ind]["operation_name"] ]["accept_conjunctive"] and
-            ind > 0):
-            paragraph += "Then, "
+        # if (ind < len(linearized_sentences) - 1 and
+#             conjunctive[ j["workflow_plan"][0]["plan"][ind]["operation_name"] ]["accept_conjunctive"] and
+#             ind > 0):
+#             paragraph += "Then, "
         paragraph += s + ". "
 
     result["blob"] = paragraph
